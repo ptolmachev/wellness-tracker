@@ -140,13 +140,16 @@ Restart ./run.sh and the app updates automatically — no Python edits required.
 
 ## Project Structure
 ```bash
-/wellness-tracker
-│
-├── main.py            # Main application (config-driven UI)
-├── style.py           # iOS-style design overrides
-├── config.yaml        # Customizable UI definition
-├── wellness_data.csv  # Auto-generated personal data
-│
-├── install.sh         # Creates conda env + installs dependencies
-└── run.sh             # One-click launcher
+├── configs                      # All configuration files (UI/layout presets)
+│   ├── config.yaml              # Primary config used by the app (current active layout)
+│   └── example_config.yaml      # Example/template config showing how to define blocks/fields
+├── data                         # Runtime data storage (git-ignored in most setups)
+│   └── wellness_data.csv        # Collected wellness logs (one row per day, updated incrementally)
+├── img                          
+│   └── wellness-tracker.png     
+├── install.sh                   # One-shot installer: creates conda env, installs dependencies
+├── main.py                      # Main Streamlit app: loads config, builds UI, handles logic
+├── README.md                    
+├── run.sh                       # Launcher script: activates env and runs `streamlit run main.py`
+└── style.py                     # Styling utilities (e.g., apply_ios_style) for iOS-like look
 ```
