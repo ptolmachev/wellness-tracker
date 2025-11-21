@@ -1,7 +1,7 @@
 # Wellness Tracker - Know thyself!
 
-git 
-
+A fully configurable daily health & performance logging app built with Streamlit.
+All interface elements — inputs, sliders, checkboxes, dropdowns, notes, and multi-column layouts — are automatically generated from a single YAML configuration file (config.yaml).
 This makes the system extremely easy to customize without modifying Python code.
 
 ---
@@ -82,7 +82,6 @@ bash ./install.sh
 This will:
 
 Create a conda environment "wellness" and install Streamlit, Pandas, PyYAML
-Prepare your environment
 
 ## Running the App
 
