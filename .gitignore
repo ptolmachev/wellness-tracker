@@ -5,9 +5,14 @@ __pycache__/
 .envrc
 .DS_Store
 
-# Data
-data/
-wellness_data.csv
+# Streamlit / misc
+.streamlit/
+*/.ipynb_checkpoints/
 
-# Configs
-configs/myconfig.yaml
+# Ignore all real data, allow only example data
+data/*
+!data/*example*.csv
+
+# Ignore all real configs, allow only example configs
+configs/*
+!configs/*example*.yaml
