@@ -1,7 +1,6 @@
-# Wellness Tracker --- Know thyself!
+# Wellness Tracker - Know thyself!
 
-A fully configurable daily health & performance logging app built with Streamlit.  
-All interface elements — metrics, sliders, checkboxes, dropdowns, notes, and multi-column layouts — are automatically generated from a single YAML configuration file (`example_config.yaml`).
+git 
 
 This makes the system extremely easy to customize without modifying Python code.
 
@@ -78,7 +77,7 @@ chmod +x install.sh
 2. Run it:
 
 ```bash
-./install.sh
+bash ./install.sh
 ```
 This will:
 
@@ -96,7 +95,7 @@ chmod +x run.sh
 2. Launch the app:
 
 ```bash
-./run.sh
+bash ./run.sh
 ```
 
 Your browser will open at:

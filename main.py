@@ -22,6 +22,8 @@ class WellnessDataHandler:
         return df
 
     def save_data(self, df: pd.DataFrame):
+        folder = os.path.dirname(self.filename) or "."
+        os.makedirs(folder, exist_ok=True)
         df.to_csv(self.filename, index=False)
 
     def _ensure_date_column(self, df: pd.DataFrame) -> pd.DataFrame:
