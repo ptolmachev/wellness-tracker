@@ -20,7 +20,7 @@ blocks:
         col: 0
 
       - name: rhr
-        label: "Resting HR"
+        label: "Resting HR, bpm"
         type: number
         subtype: int
         min: 0
@@ -29,7 +29,7 @@ blocks:
         col: 0
 
       - name: hrv
-        label: "HRV"
+        label: "HRV, ms"
         type: number
         subtype: int
         min: 0
@@ -47,15 +47,6 @@ blocks:
         default: None
         col: 1
 
-      - name: sleep_quality
-        label: "Sleep Quality (0-10)"
-        type: number
-        subtype: int
-        min: 0
-        max: 10
-        default: 8
-        col: 1
-
       - name: wake_time
         label: "Time of Waking"
         type: time
@@ -66,6 +57,15 @@ blocks:
         label: "Time of Sleeping (yesterday)"
         type: time
         default: "now"
+        col: 1
+
+      - name: sleep_quality
+        label: "Sleep Quality (0-10)"
+        type: number
+        subtype: int
+        min: 0
+        max: 10
+        default: 8
         col: 1
 
       - name: weight
@@ -89,7 +89,7 @@ blocks:
     title: "B. Daily Behaviors"
     expanded: true
     save_label: "Save Daily Behaviors"
-    n_cols: 2
+    n_cols: 3
     fields:
       - name: food_quality
         label: "Food Quality (0-10)"
@@ -102,12 +102,6 @@ blocks:
 
       - name: meditation
         label: "Meditation"
-        type: checkbox
-        default: false
-        col: 0
-
-      - name: calorie_restriction
-        label: "Calorie Restriction"
         type: checkbox
         default: false
         col: 0
@@ -129,18 +123,18 @@ blocks:
         default: 0.0
         col: 1
 
+      - name: calorie_restriction
+        label: "Calorie Restriction"
+        type: checkbox
+        default: false
+        col: 2
+
   - id: exercise
     title: "C. Exercise"
     expanded: true
     save_label: "Save Exercise"
     n_cols: 2
     fields:
-      - name: gym
-        label: "Gym / Weights"
-        type: checkbox
-        default: false
-        col: 0
-
       - name: run_km
         label: "Run Distance (km)"
         type: number
@@ -151,11 +145,11 @@ blocks:
         allow_none: true
         col: 0
 
-      - name: exercise_other
-        label: "Other Exercise / Notes"
-        type: text
-        default: ""
-        col: 1
+      - name: gym
+        label: "Gym / Weights"
+        type: checkbox
+        default: false
+        col: 0
 
       - name: walking_steps
         label: "Walking Steps"
@@ -164,6 +158,12 @@ blocks:
         min: 0
         step: 100
         default: 0
+        col: 1
+
+      - name: exercise_other
+        label: "Other Exercise / Notes"
+        type: text
+        default: ""
         col: 1
 
   - id: meds
@@ -196,14 +196,14 @@ blocks:
     save_label: "Save Supplements"
     n_cols: 3
     fields:
-      - name: supp_multivitamin
-        label: "Multivitamin"
+      - name: supp_vitamin_d
+        label: "Vitamin D"
         type: checkbox
         default: false
         col: 0
 
-      - name: supp_vitamin_d
-        label: "Vitamin D"
+      - name: supp_multivitamin
+        label: "Multivitamin"
         type: checkbox
         default: false
         col: 0

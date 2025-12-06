@@ -9,6 +9,11 @@ from style import apply_ios_style
 
 # ================= DATA HANDLER ================= #
 
+import os
+from datetime import datetime, timedelta
+import pandas as pd
+
+
 class WellnessDataHandler:
     def __init__(self, filename: str):
         self.filename = filename
@@ -38,6 +43,11 @@ class WellnessDataHandler:
         df = self.load_data()
         df = self._ensure_date_column(df)
         now = datetime.now()
+
+        # If we're logging "today" but it's before 4am, write to yesterday instead
+        today_str = now.strftime("%Y-%m-%d")
+        if day_str == today_str and now.hour < 4:
+            day_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
         mask = df["date"] == day_str
 
@@ -91,6 +101,17 @@ def get_or_default(d: dict, key: str, default):
     except Exception:
         pass
     return v
+
+
+def get_entry_day(now: datetime = None, cutoff_hour: int = 4) -> str:
+    """
+    Return the logical "today" for the app. Before the cutoff hour (e.g., 4am),
+    we still want to read/write against yesterday's date.
+    """
+    now = now or datetime.now()
+    if now.hour < cutoff_hour:
+        return (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    return now.strftime("%Y-%m-%d")
 
 
 def load_config(path: str = "config.yaml") -> dict:
@@ -163,27 +184,41 @@ def render_field(field: dict, col, today_data: dict, block_id: str):
         subtype = field.get("subtype", "float")
         allow_none = field.get("allow_none", False)
 
-        kwargs = {}
-        if "min" in field:
-            kwargs["min_value"] = field["min"]
-        if "max" in field:
-            kwargs["max_value"] = field["max"]
-        if "step" in field:
-            kwargs["step"] = field["step"]
-
-        # If we allow None, add a "no value" checkbox above the input
         if allow_none:
-            none_key = f"{key}__none"
-            is_none_default = init is None
-            is_none = col.checkbox(f"{label}: not measured", value=is_none_default, key=none_key)
-            if is_none:
-                # user explicitly says "None" → don't even show/use the numeric input
+            # Use free-text input so it can be left blank (None)
+            raw = col.text_input(
+                label,
+                value="" if init is None else str(init),
+                key=key,
+                placeholder=field.get("placeholder", "Leave blank if not measured"),
+            ).strip()
+            if raw == "":
                 return None
+            try:
+                return int(raw) if subtype == "int" else float(raw)
+            except ValueError:
+                # Invalid entry → treat as None
+                return None
+
+        # Normalize numeric kwargs so Streamlit doesn't complain about mixed types
+        kwargs = {}
+        if subtype == "int":
+            caster = int
+        else:
+            caster = float
+
+        if "min" in field:
+            kwargs["min_value"] = caster(field["min"])
+        if "max" in field:
+            kwargs["max_value"] = caster(field["max"])
+        if "step" in field:
+            kwargs["step"] = caster(field["step"])
 
         if init is None:
             init_val = field.get("min", 0 if subtype == "int" else 0.0)
         else:
             init_val = int(init) if subtype == "int" else float(init)
+        init_val = caster(init_val)
 
         return col.number_input(label, value=init_val, key=key, **kwargs)
 
@@ -243,26 +278,26 @@ class WellnessApp:
     def run(self):
         self.setup_page()
 
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        today_data = self.handler.get_for_date(today_str)
+        entry_day_str = get_entry_day()
+        entry_data = self.handler.get_for_date(entry_day_str)
 
         tabs = st.tabs(["Entry", "Stats"])
         with tabs[0]:
-            self.render_entry_tab(today_str, today_data)
+            self.render_entry_tab(entry_day_str, entry_data)
         with tabs[1]:
             self.render_stats_tab()
 
-    def render_entry_tab(self, today_str: str, today_data: dict):
+    def render_entry_tab(self, entry_day_str: str, entry_data: dict):
         col1, col2 = st.columns([2, 1])
 
         with col1:
-            st.header(f"New Entry – {today_str}")
-            self.render_blocks(today_str, today_data)
+            st.header(f"New Entry – {entry_day_str}")
+            self.render_blocks(entry_day_str, entry_data)
 
         with col2:
             self.render_history()
 
-    def render_blocks(self, today_str: str, today_data: dict):
+    def render_blocks(self, entry_day_str: str, entry_data: dict):
         for block in self.blocks_conf:
             block_id = block["id"]
             title = block["title"]
@@ -279,11 +314,11 @@ class WellnessApp:
                     col_idx = max(0, min(col_idx, n_cols - 1))
                     col = cols[col_idx]
                     values[field["name"]] = render_field(
-                        field, col, today_data, block_id
+                        field, col, entry_data, block_id
                     )
 
                 if st.button(save_label, key=f"save__{block_id}"):
-                    self.handler.upsert_for_date(today_str, values)
+                    self.handler.upsert_for_date(entry_day_str, values)
                     st.success(f"{title} saved.")
 
     def render_history(self):
