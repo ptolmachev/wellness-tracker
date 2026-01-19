@@ -42,19 +42,11 @@ class WellnessDataHandler:
     def upsert_for_date(self, day_str: str, updates: dict):
         df = self.load_data()
         df = self._ensure_date_column(df)
-        now = datetime.now()
         entry_date = datetime.strptime(day_str, "%Y-%m-%d")
-
-        # If we're logging "today" but it's before 4am, write to yesterday instead
-        today_str = now.strftime("%Y-%m-%d")
-        if day_str == today_str and now.hour < 4:
-            day_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
-            entry_date = datetime.strptime(day_str, "%Y-%m-%d")
 
         mask = df["date"] == day_str
 
         if not mask.any():
-            # Store a date-only timestamp (no exact time) for this entry
             row = {"date": day_str, "timestamp": entry_date}
             row.update(updates)
             df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
@@ -62,10 +54,10 @@ class WellnessDataHandler:
             idx = df[mask].index[0]
             for k, v in updates.items():
                 df.loc[idx, k] = v
-            # keep timestamp aligned to the logical entry date
             df.loc[idx, "timestamp"] = entry_date
 
         self.save_data(df)
+
 
     def get_for_date(self, day_str: str) -> dict:
         df = self.load_data()
@@ -107,21 +99,17 @@ def get_or_default(d: dict, key: str, default):
     return v
 
 
-def get_entry_day(now: datetime = None, cutoff_hour: int = 4) -> str:
-    """
-    Return the logical "today" for the app. Before the cutoff hour (e.g., 4am),
-    we still want to read/write against yesterday's date.
-    """
-    now = now or datetime.now()
-    if now.hour < cutoff_hour:
-        return (now - timedelta(days=1)).strftime("%Y-%m-%d")
-    return now.strftime("%Y-%m-%d")
+def get_entry_day() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+def shift_day(day_str: str, delta: int) -> str:
+    d = datetime.strptime(day_str, "%Y-%m-%d")
+    return (d + timedelta(days=delta)).strftime("%Y-%m-%d")
 
 
 def load_config(path: str = "config.yaml") -> dict:
     with open(path, "r") as f:
         return yaml.safe_load(f)
-
 
 def cast_initial_value(field: dict, stored):
     t = field["type"]
@@ -141,6 +129,15 @@ def cast_initial_value(field: dict, stored):
             return None
 
     if t == "checkbox":
+        if v is None:
+            return bool(default)
+        try:
+            if pd.isna(v):
+                return bool(default)
+        except Exception:
+            pass
+        if isinstance(v, str):
+            return v.strip().lower() in {"1", "true", "t", "yes", "y"}
         return bool(v)
 
     if t == "select":
@@ -174,11 +171,11 @@ def cast_initial_value(field: dict, stored):
     return v
 
 
-def render_field(field: dict, col, today_data: dict, block_id: str):
+def render_field(field: dict, col, today_data: dict, block_id: str, day_str: str):
     name = field["name"]
     label = field["label"]
     ftype = field["type"]
-    key = f"{block_id}__{name}"
+    key = f"{day_str}__{block_id}__{name}"  # <- include day
 
     stored = today_data.get(name, None)
     init = cast_initial_value(field, stored)
@@ -282,7 +279,7 @@ class WellnessApp:
     def run(self):
         self.setup_page()
 
-        entry_day_str = get_entry_day()
+        entry_day_str = self.render_day_selector()
         entry_data = self.handler.get_for_date(entry_day_str)
 
         tabs = st.tabs(["Entry", "Stats"])
@@ -317,13 +314,61 @@ class WellnessApp:
                     col_idx = field.get("col", 0)
                     col_idx = max(0, min(col_idx, n_cols - 1))
                     col = cols[col_idx]
-                    values[field["name"]] = render_field(
-                        field, col, entry_data, block_id
-                    )
+                    values[field["name"]] = render_field(field, col, entry_data, block_id, entry_day_str)
 
-                if st.button(save_label, key=f"save__{block_id}"):
+                if st.button(save_label, key=f"save__{entry_day_str}__{block_id}"):
                     self.handler.upsert_for_date(entry_day_str, values)
                     st.success(f"{title} saved.")
+
+    def render_day_selector(self) -> str:
+        if "entry_day" not in st.session_state:
+            st.session_state.entry_day = get_entry_day()
+
+        day = st.session_state.entry_day
+        today = get_entry_day()
+
+        st.markdown("""
+        <style>
+        .day-plaque{
+            border:1px solid rgba(0,120,255,.35);
+            border-radius:16px;
+            padding:12px 14px;
+            background:linear-gradient(180deg, rgba(0,120,255,.14), rgba(0,120,255,.06));
+            box-shadow:0 2px 8px rgba(0,80,200,.12);
+            text-align:center;
+            line-height:1.15;
+        }
+        .day-plaque .kicker{font-size:12px; opacity:.75; margin-bottom:6px; color:rgba(0,70,170,.9);}
+        .day-plaque .big{font-size:24px; font-weight:800; color:rgba(0,60,150,.98);}
+        .day-plaque .sub{font-size:16px; font-weight:700; margin-top:8px; color:rgba(0,80,200,.95);}
+        .day-plaque .sub span{font-weight:900;}
+        </style>
+        """, unsafe_allow_html=True)
+
+        c0, c1, c2 = st.columns([1, 3, 1])
+
+        prev_clicked = c0.button("◀︎", key="day_prev", use_container_width=True)
+        next_clicked = c2.button("▶︎", key="day_next", use_container_width=True)
+
+        if prev_clicked:
+            day = shift_day(day, -1)
+        if next_clicked:
+            day = shift_day(day, 1)
+
+        st.session_state.entry_day = day
+
+        c1.markdown(
+            f"""
+            <div class="day-plaque">
+            <div class="kicker">Editing date</div>
+            <div class="big">{day}</div>
+            <div class="sub">Today: <span>{today}</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        return day
+
 
     def render_history(self):
         st.header("History")
