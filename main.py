@@ -43,23 +43,27 @@ class WellnessDataHandler:
         df = self.load_data()
         df = self._ensure_date_column(df)
         now = datetime.now()
+        entry_date = datetime.strptime(day_str, "%Y-%m-%d")
 
         # If we're logging "today" but it's before 4am, write to yesterday instead
         today_str = now.strftime("%Y-%m-%d")
         if day_str == today_str and now.hour < 4:
             day_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+            entry_date = datetime.strptime(day_str, "%Y-%m-%d")
 
         mask = df["date"] == day_str
 
         if not mask.any():
-            row = {"date": day_str, "timestamp": now}
+            # Store a date-only timestamp (no exact time) for this entry
+            row = {"date": day_str, "timestamp": entry_date}
             row.update(updates)
             df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
         else:
             idx = df[mask].index[0]
             for k, v in updates.items():
                 df.loc[idx, k] = v
-            df.loc[idx, "timestamp"] = now
+            # keep timestamp aligned to the logical entry date
+            df.loc[idx, "timestamp"] = entry_date
 
         self.save_data(df)
 
@@ -335,7 +339,7 @@ class WellnessApp:
             ts = row.get("timestamp", None)
             if pd.isna(ts):
                 continue
-            ts_str = ts.strftime("%Y-%m-%d %H:%M")
+            ts_str = ts.strftime("%Y-%m-%d")
             avg_score = get_subjective_average(row)
 
             with st.container():
