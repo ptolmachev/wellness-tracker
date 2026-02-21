@@ -491,74 +491,62 @@ class WellnessApp:
         else:
             st.info("Weight tracking plot not configured.")
         
-        df = self.handler.load_data()
-        if df.empty:
-            st.info("No data available yet.")
-            return
+        # HRV Tracking
+        st.divider()
         
-        # Ensure date column is properly formatted
-        df = self.handler._ensure_date_column(df)
+        hrv_stat = next((s for s in stats_conf if s["id"] == "hrv_plot"), None)
         
-        # Get stats configuration
-        stats_conf = self.config.get("stats", [])
-        
-        # Filter for weight tracking plot only
-        weight_stat = next((s for s in stats_conf if s["id"] == "weight_plot"), None)
-        
-        if weight_stat:
-            st.subheader(weight_stat.get("label", "Weight"))
+        if hrv_stat:
+            st.subheader(hrv_stat.get("label", "HRV"))
             
-            # Initialize zoom state in session
-            if "weight_zoom_level" not in st.session_state:
-                st.session_state.weight_zoom_level = 1.0
+            # Initialize zoom state for HRV
+            if "hrv_zoom_level" not in st.session_state:
+                st.session_state.hrv_zoom_level = 1.0
             
             # Time period selector and zoom controls
-            col_period, col_zoom = st.columns([2, 3])
+            col_period_hrv, col_zoom_hrv = st.columns([2, 3])
             
-            with col_period:
-                period = st.selectbox(
+            with col_period_hrv:
+                period_hrv = st.selectbox(
                     "Time Period",
                     options=["week", "month", "year"],
                     format_func=lambda x: x.capitalize(),
-                    key="weight_period"
+                    key="stats_hrv_period"
                 )
             
-            with col_zoom:
-                st.markdown("**Zoom:**")
-                zoom_cols = st.columns(5)
-                with zoom_cols[1]:
-                    if st.button("◀ Out", key="zoom_out"):
-                        st.session_state.weight_zoom_level *= 2.0
+            with col_zoom_hrv:
+                zoom_cols_hrv = st.columns(5)
+                with zoom_cols_hrv[1]:
+                    if st.button("−", key="stats_hrv_zoom_out"):
+                        st.session_state.hrv_zoom_level *= 2.0
                         st.rerun()
                 
-                with zoom_cols[2]:
-                    if st.button("⟳ Reset", key="zoom_reset"):
-                        st.session_state.weight_zoom_level = 1.0
+                with zoom_cols_hrv[2]:
+                    if st.button("×", key="stats_hrv_zoom_reset"):
+                        st.session_state.hrv_zoom_level = 1.0
                         st.rerun()
                 
-                with zoom_cols[3]:
-                    if st.button("In ▶", key="zoom_in"):
-                        st.session_state.weight_zoom_level *= 0.5
+                with zoom_cols_hrv[3]:
+                    if st.button("+", key="stats_hrv_zoom_in"):
+                        st.session_state.hrv_zoom_level *= 0.5
                         st.rerun()
             
-            plot_type = weight_stat.get("plot_type", "time_series")
-            column = weight_stat.get("column")
+            plot_type_hrv = hrv_stat.get("plot_type", "time_series")
+            column_hrv = hrv_stat.get("column")
             
-            if plot_type == "time_series":
-                fig = plot_time_series(
-                    df, 
-                    column, 
-                    period=period, 
-                    title=weight_stat.get("description"),
+            if plot_type_hrv == "time_series":
+                fig_hrv = plot_time_series(
+                    df,
+                    column_hrv,
+                    period=period_hrv,
+                    title=hrv_stat.get("description"),
                     enable_zoom=False,
-                    zoom_level=st.session_state.weight_zoom_level
+                    zoom_level=st.session_state.hrv_zoom_level
                 )
-                st.plotly_chart(fig, use_container_width=True)
-            elif plot_type == "calendar":
-                fig = plot_activity_calendar(df, column, period=period, title=weight_stat.get("description"))
-                st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Weight tracking plot not configured.")
+                st.plotly_chart(fig_hrv, use_container_width=True, key="hrv_time_series_plot")
+            elif plot_type_hrv == "calendar":
+                fig_hrv = plot_activity_calendar(df, column_hrv, period=period_hrv, title=hrv_stat.get("description"))
+                st.plotly_chart(fig_hrv, use_container_width=True, key="hrv_calendar_plot")
 
 
 # ================= ENTRY POINT ================= #
