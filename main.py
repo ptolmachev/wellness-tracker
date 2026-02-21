@@ -1,11 +1,12 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import streamlit as st
 import yaml
+import plotly.graph_objects as go
 
 from style import apply_ios_style
-from plot_stats import plot_time_series, plot_activity_calendar, get_activity_score
+from plot_stats import plot_time_series, plot_activity_calendar, plot_exercise_calendar, get_activity_score
 
 
 # ================= DATA HANDLER ================= #
@@ -449,9 +450,10 @@ class WellnessApp:
             
             with col_period:
                 period = st.selectbox(
-                    "Time Period",
+                    "",
                     options=["week", "month", "year"],
-                    format_func=lambda x: x.capitalize(),
+                    index=1,
+                    format_func=lambda x: f"Time Period: {x.capitalize()}",
                     key="stats_weight_period"
                 )
             
@@ -508,9 +510,10 @@ class WellnessApp:
             
             with col_period_hrv:
                 period_hrv = st.selectbox(
-                    "Time Period",
+                    "",
                     options=["week", "month", "year"],
-                    format_func=lambda x: x.capitalize(),
+                    index=1,
+                    format_func=lambda x: f"Time Period: {x.capitalize()}",
                     key="stats_hrv_period"
                 )
             
@@ -547,6 +550,255 @@ class WellnessApp:
             elif plot_type_hrv == "calendar":
                 fig_hrv = plot_activity_calendar(df, column_hrv, period=period_hrv, title=hrv_stat.get("description"))
                 st.plotly_chart(fig_hrv, use_container_width=True, key="hrv_calendar_plot")
+        
+        # Morning Exercise Calendar
+        st.divider()
+        
+        # Get morning exercise config
+        morning_ex_config = next((s for s in stats_conf if s.get("id") == "morning_exercise_plot"), None)
+        
+        if morning_ex_config:
+            st.subheader(morning_ex_config.get("label", "Morning Exercise"))
+            
+            column_ex = morning_ex_config.get("column")
+            
+            # Initialize calendar state
+            today = datetime.now().date()
+            if "ex_calendar_year" not in st.session_state:
+                st.session_state.ex_calendar_year = today.year
+            if "ex_calendar_month" not in st.session_state:
+                st.session_state.ex_calendar_month = today.month
+            if "ex_calendar_week_start" not in st.session_state:
+                # Find Monday of current week
+                st.session_state.ex_calendar_week_start = today - timedelta(days=today.weekday())
+            
+            # Time period selector
+            col_period_ex, col_nav = st.columns([2, 4])
+            
+            with col_period_ex:
+                period_ex = st.selectbox(
+                    label="",
+                    options=["week", "month", "year"],
+                    index=1,  # Default to "month"
+                    format_func=lambda x: f"Time Period: {x.capitalize()}",
+                    key="stats_morning_exercise_period"
+                )
+            
+            # Navigation controls with CSS to match dropdown height
+            with col_nav:
+                st.markdown("""
+                    <style>
+                    .stButton > button {
+                        height: 2.5rem;
+                        width: 100%;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                nav_cols = st.columns(3)
+                
+                with nav_cols[0]:
+                    if st.button("← Previous", key="stats_ex_prev"):
+                        if period_ex == "month":
+                            if st.session_state.ex_calendar_month == 1:
+                                st.session_state.ex_calendar_month = 12
+                                st.session_state.ex_calendar_year -= 1
+                            else:
+                                st.session_state.ex_calendar_month -= 1
+                        elif period_ex == "week":
+                            st.session_state.ex_calendar_week_start -= timedelta(days=7)
+                        elif period_ex == "year":
+                            st.session_state.ex_calendar_year -= 1
+                        st.rerun()
+                
+                with nav_cols[1]:
+                    if st.button("Today", key="stats_ex_today"):
+                        st.session_state.ex_calendar_year = today.year
+                        st.session_state.ex_calendar_month = today.month
+                        st.session_state.ex_calendar_week_start = today - timedelta(days=today.weekday())
+                        st.rerun()
+                
+                with nav_cols[2]:
+                    if st.button("Next →", key="stats_ex_next"):
+                        if period_ex == "month":
+                            if st.session_state.ex_calendar_month == 12:
+                                st.session_state.ex_calendar_month = 1
+                                st.session_state.ex_calendar_year += 1
+                            else:
+                                st.session_state.ex_calendar_month += 1
+                        elif period_ex == "week":
+                            st.session_state.ex_calendar_week_start += timedelta(days=7)
+                        elif period_ex == "year":
+                            st.session_state.ex_calendar_year += 1
+                        st.rerun()
+            
+            # Create morning exercise calendar
+            if column_ex in df.columns:
+                if period_ex == "month":
+                    import calendar as cal
+                    month_name = cal.month_name[st.session_state.ex_calendar_month]
+                    period_title = f"{month_name} {st.session_state.ex_calendar_year}"
+                    
+                    fig_ex = plot_exercise_calendar(
+                        df,
+                        column_ex,
+                        period="month",
+                        year=st.session_state.ex_calendar_year,
+                        month=st.session_state.ex_calendar_month,
+                        title="Morning Exercise Calendar"
+                    )
+                    st.markdown(f"##### {period_title}")
+                    
+                elif period_ex == "week":
+                    week_number = st.session_state.ex_calendar_week_start.isocalendar()[1]
+                    week_year = st.session_state.ex_calendar_week_start.isocalendar()[0]
+                    period_title = f"Week {week_number} {week_year}"
+                    
+                    fig_ex = plot_exercise_calendar(
+                        df,
+                        column_ex,
+                        period="week",
+                        week_start_date=st.session_state.ex_calendar_week_start,
+                        title="Morning Exercise Calendar"
+                    )
+                    st.markdown(f"##### {period_title}")
+                    
+                elif period_ex == "year":
+                    period_title = f"{st.session_state.ex_calendar_year}"
+                    
+                    fig_ex = plot_exercise_calendar(
+                        df,
+                        column_ex,
+                        period="year",
+                        year=st.session_state.ex_calendar_year,
+                        title="Morning Exercise Calendar"
+                    )
+                    st.markdown(f"##### {period_title}")
+                
+                st.plotly_chart(fig_ex, use_container_width=True, key="morning_exercise_calendar")
+            else:
+                st.warning(f"Morning exercise column '{column_ex}' not found in data.")
+        
+        # Gym Exercise Calendar
+        st.divider()
+        
+        st.subheader("Gym Exercise")
+        
+        column_gym = "gym"
+        
+        if column_gym in df.columns:
+            # Initialize calendar state for gym
+            today = datetime.now().date()
+            if "gym_calendar_year" not in st.session_state:
+                st.session_state.gym_calendar_year = today.year
+            if "gym_calendar_month" not in st.session_state:
+                st.session_state.gym_calendar_month = today.month
+            if "gym_calendar_week_start" not in st.session_state:
+                st.session_state.gym_calendar_week_start = today - timedelta(days=today.weekday())
+            
+            # Time period selector
+            col_period_gym, col_nav_gym = st.columns([2, 4])
+            
+            with col_period_gym:
+                period_gym = st.selectbox(
+                    label="",
+                    options=["week", "month", "year"],
+                    index=1,  # Default to "month"
+                    format_func=lambda x: f"Time Period: {x.capitalize()}",
+                    key="stats_gym_exercise_period"
+                )
+            
+            # Navigation controls with CSS to match dropdown height
+            with col_nav_gym:
+                st.markdown("""
+                    <style>
+                    .stButton > button {
+                        height: 2.5rem;
+                        width: 100%;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                nav_cols_gym = st.columns(3)
+                
+                with nav_cols_gym[0]:
+                    if st.button("← Previous", key="stats_gym_prev"):
+                        if period_gym == "month":
+                            if st.session_state.gym_calendar_month == 1:
+                                st.session_state.gym_calendar_month = 12
+                                st.session_state.gym_calendar_year -= 1
+                            else:
+                                st.session_state.gym_calendar_month -= 1
+                        elif period_gym == "week":
+                            st.session_state.gym_calendar_week_start -= timedelta(days=7)
+                        elif period_gym == "year":
+                            st.session_state.gym_calendar_year -= 1
+                        st.rerun()
+                
+                with nav_cols_gym[1]:
+                    if st.button("Today", key="stats_gym_today"):
+                        st.session_state.gym_calendar_year = today.year
+                        st.session_state.gym_calendar_month = today.month
+                        st.session_state.gym_calendar_week_start = today - timedelta(days=today.weekday())
+                        st.rerun()
+                
+                with nav_cols_gym[2]:
+                    if st.button("Next →", key="stats_gym_next"):
+                        if period_gym == "month":
+                            if st.session_state.gym_calendar_month == 12:
+                                st.session_state.gym_calendar_month = 1
+                                st.session_state.gym_calendar_year += 1
+                            else:
+                                st.session_state.gym_calendar_month += 1
+                        elif period_gym == "week":
+                            st.session_state.gym_calendar_week_start += timedelta(days=7)
+                        elif period_gym == "year":
+                            st.session_state.gym_calendar_year += 1
+                        st.rerun()
+            
+            # Create gym calendar
+            if period_gym == "month":
+                import calendar as cal
+                month_name = cal.month_name[st.session_state.gym_calendar_month]
+                period_title = f"{month_name} {st.session_state.gym_calendar_year}"
+                
+                fig_gym = plot_exercise_calendar(
+                    df,
+                    column_gym,
+                    period="month",
+                    year=st.session_state.gym_calendar_year,
+                    month=st.session_state.gym_calendar_month,
+                    title="Gym Exercise Calendar"
+                )
+                st.markdown(f"##### {period_title}")
+                
+            elif period_gym == "week":
+                week_number = st.session_state.gym_calendar_week_start.isocalendar()[1]
+                week_year = st.session_state.gym_calendar_week_start.isocalendar()[0]
+                period_title = f"Week {week_number} {week_year}"
+                
+                fig_gym = plot_exercise_calendar(
+                    df,
+                    column_gym,
+                    period="week",
+                    week_start_date=st.session_state.gym_calendar_week_start,
+                    title="Gym Exercise Calendar"
+                )
+                st.markdown(f"##### {period_title}")
+                
+            elif period_gym == "year":
+                period_title = f"{st.session_state.gym_calendar_year}"
+                
+                fig_gym = plot_exercise_calendar(
+                    df,
+                    column_gym,
+                    period="year",
+                    year=st.session_state.gym_calendar_year,
+                    title="Gym Exercise Calendar"
+                )
+                st.markdown(f"##### {period_title}")
+            
+            st.plotly_chart(fig_gym, use_container_width=True, key="gym_exercise_calendar")
+        else:
+            st.info("Gym exercise data not available.")
 
 
 # ================= ENTRY POINT ================= #

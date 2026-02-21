@@ -127,6 +127,25 @@ def plot_time_series(
         y_low = y_center - y_range_adjusted
         y_high = y_center + y_range_adjusted
     
+    # Create weekend shading
+    shapes = []
+    date_range_all = pd.date_range(start=df_complete["date"].min(), end=df_complete["date"].max(), freq="D")
+    for date in date_range_all:
+        if date.weekday() >= 5:  # Saturday (5) and Sunday (6)
+            shapes.append(
+                dict(
+                    type="rect",
+                    xref="x",
+                    yref="paper",
+                    x0=date,
+                    x1=date + pd.Timedelta(days=1),
+                    y0=0,
+                    y1=1,
+                    fillcolor="rgba(200, 200, 200, 0.1)",
+                    line=dict(width=0),
+                )
+            )
+    
     # Update layout
     layout_dict = {
         "title": title or f"{column} – Last {period.capitalize()}",
@@ -135,6 +154,7 @@ def plot_time_series(
         "template": "plotly_white",
         "height": 400,
         "hovermode": "x unified",
+        "shapes": shapes,
     }
     
     # Set y-axis range based on zoom level
@@ -286,3 +306,306 @@ def get_activity_score(entry: dict) -> float:
         return score
     except Exception:
         return 0.0
+
+def plot_exercise_calendar(
+    df: pd.DataFrame,
+    column: str,
+    period: str = "month",
+    year: int = None,
+    month: int = None,
+    week_start_date: datetime = None,
+    title: str = "Exercise Calendar"
+) -> go.Figure:
+    """
+    Create a calendar view for exercise tracking.
+    
+    Parameters:
+    - df: DataFrame with exercise data (must have 'date' column and boolean/numeric column)
+    - column: Column name containing exercise data
+    - period: "week", "month", or "year"
+    - year, month: For month/year views
+    - week_start_date: For week view
+    - title: Plot title
+    
+    Returns: Plotly Figure with calendar visualization
+    """
+    import calendar as cal
+    
+    # Prepare data
+    df_copy = df.copy()
+    df_copy["date"] = pd.to_datetime(df_copy["date"], errors="coerce")
+    df_copy = df_copy.dropna(subset=["date"])
+    
+    # Convert column to boolean
+    if df_copy[column].dtype == 'object':
+        df_copy["exercise"] = df_copy[column].apply(
+            lambda x: str(x).lower() in ['true', '1', 'yes'] if pd.notna(x) else False
+        )
+    else:
+        df_copy["exercise"] = pd.to_numeric(df_copy[column], errors="coerce").fillna(False).astype(bool)
+    
+    # Create dict for quick lookup: date -> bool
+    exercise_dict = dict(zip(df_copy["date"].dt.date, df_copy["exercise"]))
+    
+    if period == "month":
+        return _create_month_calendar(exercise_dict, year, month, title)
+    elif period == "week":
+        return _create_week_calendar(exercise_dict, week_start_date, title)
+    elif period == "year":
+        return _create_year_calendar(exercise_dict, year, title)
+
+
+def _create_month_calendar(exercise_dict: dict, year: int, month: int, title: str) -> go.Figure:
+    """Create a monthly calendar view."""
+    import calendar as cal
+    
+    today = datetime.now().date()
+    if year is None:
+        year = today.year
+    if month is None:
+        month = today.month
+    
+    # Get calendar for this month
+    month_cal = cal.monthcalendar(year, month)
+    month_name = cal.month_name[month]
+    
+    # Create grid data
+    x_positions = []
+    y_positions = []
+    dates = []
+    hover_texts = []
+    colors = []
+    
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+    for week_num, week in enumerate(month_cal):
+        for day_num, day in enumerate(week):
+            if day == 0:
+                continue
+            
+            x_positions.append(day_num)
+            y_positions.append(-week_num)
+            
+            date_obj = datetime(year, month, day).date()
+            dates.append(date_obj)
+            
+            has_exercise = exercise_dict.get(date_obj, False)
+            hover_texts.append(f"{date_obj}<br>Exercise: {'Yes' if has_exercise else 'No'}")
+            
+            # Green for exercise, light gray for no exercise
+            if has_exercise:
+                colors.append("rgba(76, 175, 80, 0.8)")  # Green
+            else:
+                colors.append("rgba(200, 200, 200, 0.2)")  # Light gray
+    
+    fig = go.Figure()
+    
+    fig.add_trace(
+        go.Scatter(
+            x=x_positions,
+            y=y_positions,
+            mode="markers+text",
+            marker=dict(
+                size=35,
+                color=colors,
+                opacity=0.7,
+                line=dict(width=1, color="rgba(100, 100, 100, 0.3)")
+            ),
+            text=[d.strftime("%d") for d in dates],
+            textposition="middle center",
+            textfont=dict(size=14, color="black"),
+            hovertext=hover_texts,
+            hoverinfo="text",
+            showlegend=False
+        )
+    )
+    
+    fig.update_layout(
+        xaxis=dict(
+            tickvals=list(range(7)),
+            ticktext=day_names,
+            showgrid=False,
+            zeroline=False,
+            side="top",
+        ),
+        yaxis=dict(
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+        ),
+        template="plotly_white",
+        height=400,
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
+    
+    return fig
+
+
+def _create_week_calendar(exercise_dict: dict, week_start_date: datetime, title: str) -> go.Figure:
+    """Create a weekly calendar view."""
+    if week_start_date is None:
+        today = datetime.now().date()
+        # Find Monday of current week
+        week_start_date = today - timedelta(days=today.weekday())
+    elif isinstance(week_start_date, datetime):
+        week_start_date = week_start_date.date()
+    
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+    x_positions = []
+    y_positions = []
+    dates = []
+    hover_texts = []
+    colors = []
+    
+    for i in range(7):
+        date_obj = week_start_date + timedelta(days=i)
+        x_positions.append(i)
+        y_positions.append(0)
+        dates.append(date_obj)
+        
+        has_exercise = exercise_dict.get(date_obj, False)
+        hover_texts.append(f"{date_obj}<br>Exercise: {'Yes' if has_exercise else 'No'}")
+        
+        if has_exercise:
+            colors.append("rgba(76, 175, 80, 0.8)")  # Green
+        else:
+            colors.append("rgba(200, 200, 200, 0.2)")  # Light gray
+    
+    fig = go.Figure()
+    
+    fig.add_trace(
+        go.Scatter(
+            x=x_positions,
+            y=[0] * 7,
+            mode="markers+text",
+            marker=dict(
+                size=50,
+                color=colors,
+                opacity=0.7,
+                line=dict(width=1, color="rgba(100, 100, 100, 0.3)")
+            ),
+            text=[d.strftime("%d") for d in dates],
+            textposition="middle center",
+            textfont=dict(size=16, color="black"),
+            hovertext=hover_texts,
+            hoverinfo="text",
+            showlegend=False
+        )
+    )
+    
+    week_end = week_start_date + timedelta(days=6)
+    week_number = week_start_date.isocalendar()[1]
+    year = week_start_date.isocalendar()[0]
+    
+    fig.update_layout(
+        xaxis=dict(
+            tickvals=list(range(7)),
+            ticktext=day_names,
+            showgrid=False,
+            zeroline=False,
+            side="top",
+        ),
+        yaxis=dict(
+            showticklabels=False,
+            showgrid=False,
+            zeroline=False,
+        ),
+        template="plotly_white",
+        height=250,
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
+    
+    return fig
+
+
+def _create_year_calendar(exercise_dict: dict, year: int, title: str) -> go.Figure:
+    """Create a yearly calendar heatmap view."""
+    import calendar as cal
+    
+    if year is None:
+        year = datetime.now().year
+    
+    # Create data for heatmap
+    weeks_data = []
+    day_of_week_data = []
+    dates_list = []
+    hover_texts = []
+    colors = []
+    
+    # Iterate through all days of the year
+    start_date = datetime(year, 1, 1).date()
+    end_date = datetime(year, 12, 31).date()
+    
+    current = start_date
+    week_num = 0
+    
+    while current <= end_date:
+        has_exercise = exercise_dict.get(current, False)
+        
+        weeks_data.append(current.isocalendar()[1])  # Week number
+        day_of_week_data.append(current.weekday())  # Day of week (0=Mon, 6=Sun)
+        dates_list.append(current)
+        
+        hover_texts.append(f"{current}<br>Exercise: {'Yes' if has_exercise else 'No'}")
+        
+        if has_exercise:
+            colors.append(1)  # Exercise
+        else:
+            colors.append(0)  # No exercise
+        
+        current += timedelta(days=1)
+    
+    # Create scatter plot for year view
+    fig = go.Figure()
+    
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    
+    fig.add_trace(
+        go.Scatter(
+            x=weeks_data,
+            y=day_of_week_data,
+            mode="markers",
+            marker=dict(
+                size=12,
+                color=colors,
+                colorscale=[[0, "rgba(200, 200, 200, 0.3)"], [1, "rgba(76, 175, 80, 0.8)"]],
+                showscale=False,
+                line=dict(width=0.5, color="rgba(150, 150, 150, 0.3)")
+            ),
+            hovertext=hover_texts,
+            hoverinfo="text",
+            showlegend=False
+        )
+    )
+    
+    fig.update_layout(
+        xaxis=dict(
+            title="Week Number",
+            showgrid=False,
+            side="top",
+            zeroline=False,
+            tickvals=[1, 13, 26, 39, 52],
+            ticktext=["1", "13", "26", "39", "52"],
+        ),
+        yaxis=dict(
+            tickvals=list(range(7)),
+            ticktext=day_names,
+            showgrid=False,
+            scaleanchor="x",
+            scaleratio=1,
+            zeroline=False,
+            range=[6.5, -0.5],  # Explicitly reverse range to show Monday at top, Sunday at bottom
+        ),
+        template="plotly_white",
+        height=500,
+        showlegend=False,
+        hovermode="closest",
+        margin=dict(l=80, r=50, t=80, b=50)
+    )
+    
+    return fig
