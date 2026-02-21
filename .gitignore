@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.env
+.venv
+.envrc
+.DS_Store
+
+# Streamlit / misc
+.streamlit/
+*/.ipynb_checkpoints/
+
+# Ignore all real data, allow only example data
+data/*
+!data/*example*.csv
+
+# Ignore all real configs, allow only example configs
+configs/*
+!configs/*example*.yaml

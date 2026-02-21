@@ -1,0 +1,316 @@
+app:
+  title: "Daily Health & Performance Log"
+  font_size: 32
+  data_file: "./data/wellness_data_example.csv"
+
+blocks:
+  - id: morning
+    title: "A. Morning Metrics"
+    expanded: true
+    save_label: "Save Morning Metrics"
+    n_cols: 3
+    fields:
+      - name: fasting_glucose
+        label: "Fasting Glucose (mg/dL)"
+        type: number
+        subtype: int
+        min: 0
+        allow_none: true
+        default: None
+        col: 0
+
+      - name: rhr
+        label: "Resting HR, bpm"
+        type: number
+        subtype: int
+        min: 0
+        allow_none: true
+        default: None
+        col: 0
+
+      - name: hrv
+        label: "HRV, ms"
+        type: number
+        subtype: int
+        min: 0
+        allow_none: true
+        default: None
+        col: 0
+
+      - name: sleep_hours
+        label: "Sleep Hours"
+        type: number
+        subtype: float
+        min: 0.0
+        step: 0.1
+        allow_none: true
+        default: None
+        col: 1
+
+      - name: wake_time
+        label: "Time of Waking"
+        type: time
+        default: "now"
+        col: 1
+
+      - name: sleep_time
+        label: "Time of Sleeping (yesterday)"
+        type: time
+        default: "now"
+        col: 1
+
+      - name: sleep_quality
+        label: "Sleep Quality (0-10)"
+        type: number
+        subtype: int
+        min: 0
+        max: 10
+        default: 8
+        col: 1
+
+      - name: weight
+        label: "Weight (lbs)"
+        type: number
+        subtype: int
+        min: 0
+        allow_none: true
+        default: None
+        col: 2
+
+      - name: alertness
+        label: "Alertness (0-10)"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 2
+
+  - id: behaviors
+    title: "B. Daily Behaviors"
+    expanded: true
+    save_label: "Save Daily Behaviors"
+    n_cols: 3
+    fields:
+      - name: food_quality
+        label: "Food Quality (0-10)"
+        type: number
+        subtype: int
+        min: 0
+        max: 10
+        default: 8
+        col: 0
+
+      - name: meditation
+        label: "Meditation"
+        type: checkbox
+        default: false
+        col: 0
+
+      - name: caffeine_mg
+        label: "Caffeine (mg)"
+        type: number
+        subtype: int
+        min: 0
+        default: 150
+        col: 1
+
+      - name: alcohol_units
+        label: "Alcohol (units)"
+        type: number
+        subtype: float
+        min: 0.0
+        step: 0.5
+        default: 0.0
+        col: 1
+
+      - name: calorie_restriction
+        label: "Calorie Restriction"
+        type: checkbox
+        default: false
+        col: 2
+
+  - id: exercise
+    title: "C. Exercise"
+    expanded: true
+    save_label: "Save Exercise"
+    n_cols: 2
+    fields:
+      - name: run_km
+        label: "Run Distance (km)"
+        type: number
+        subtype: float
+        min: 0.0
+        step: 0.1
+        default: None
+        allow_none: true
+        col: 0
+
+      - name: gym
+        label: "Gym / Weights"
+        type: checkbox
+        default: false
+        col: 0
+
+      - name: walking_steps
+        label: "Walking Steps"
+        type: number
+        subtype: int
+        min: 0
+        step: 100
+        default: 0
+        col: 1
+
+      - name: exercise_other
+        label: "Other Exercise / Notes"
+        type: text
+        default: ""
+        col: 1
+
+  - id: meds
+    title: "D. Medications"
+    expanded: true
+    save_label: "Save Medications"
+    n_cols: 3
+    fields:
+      - name: med_1
+        label: "Medication 1"
+        type: checkbox
+        default: false
+        col: 0
+
+      - name: med_2
+        label: "Medication 2"
+        type: checkbox
+        default: false
+        col: 1
+
+      - name: med_3
+        label: "Medication 3"
+        type: checkbox
+        default: false
+        col: 2
+
+  - id: supps
+    title: "E. Supplements"
+    expanded: true
+    save_label: "Save Supplements"
+    n_cols: 3
+    fields:
+      - name: supp_vitamin_d
+        label: "Vitamin D"
+        type: checkbox
+        default: false
+        col: 0
+
+      - name: supp_multivitamin
+        label: "Multivitamin"
+        type: checkbox
+        default: false
+        col: 0
+
+      - name: supp_omega_3
+        label: "Omega 3"
+        type: checkbox
+        default: false
+        col: 1
+
+      - name: supp_magnesium
+        label: "Magnesium"
+        type: checkbox
+        default: false
+        col: 1
+
+      - name: supp_creatine
+        label: "Creatine"
+        type: checkbox
+        default: false
+        col: 2
+
+      - name: supp_other
+        label: "Other Supplements (comma separated)"
+        type: text
+        default: ""
+        col: 2
+
+  - id: subjective
+    title: "F. Subjective Ratings (0-10)"
+    expanded: true
+    save_label: "Save Subjective Ratings"
+    n_cols: 2
+    fields:
+      - name: motivation
+        label: "Motivation"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 0
+
+      - name: mental_clarity
+        label: "Mental Clarity"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 0
+
+      - name: mood
+        label: "Mood"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 0
+
+      - name: productivity
+        label: "Productivity"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 0
+
+      - name: fatigue
+        label: "Fatigue (Lower is better)"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 1
+
+      - name: stress
+        label: "Stress (Lower is better)"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 1
+
+      - name: overstimulation
+        label: "Overstimulation"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 1
+
+      - name: social_avoidance
+        label: "Social Avoidance"
+        type: slider
+        min: 0
+        max: 10
+        default: 5
+        col: 1
+
+  - id: optional
+    title: "G. Miscellaneous"
+    expanded: true
+    save_label: "Save Miscellaneous"
+    n_cols: 1
+    fields:
+      - name: notes
+        label: "Free-text Notes"
+        type: textarea
+        max_chars: 3000
+        default: ""
+        col: 0
