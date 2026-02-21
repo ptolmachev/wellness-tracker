@@ -20,6 +20,8 @@ def plot_time_series(
     column: str,
     period: Literal["week", "month", "year"] = "month",
     title: str = None,
+    enable_zoom: bool = False,
+    zoom_level: float = 1.0,
 ) -> go.Figure:
     """
     Plot a time series for a single metric over a specified period.
@@ -29,6 +31,8 @@ def plot_time_series(
         column: Column name to plot
         period: "week", "month", or "year"
         title: Optional custom title
+        enable_zoom: If True, adds zoom in/out buttons for y-axis (deprecated, use zoom_level instead)
+        zoom_level: Zoom factor for y-axis (1.0 = default, 0.5 = 2x zoom in, 2.0 = 2x zoom out)
     
     Returns:
         Plotly Figure object
@@ -68,29 +72,76 @@ def plot_time_series(
     df_filtered = df_filtered.copy()
     df_filtered[column] = pd.to_numeric(df_filtered[column], errors="coerce")
     
+    # Create complete date range and interpolate missing values
+    date_range = pd.date_range(start=df_filtered["date"].min(), end=df_filtered["date"].max(), freq="D")
+    df_complete = pd.DataFrame({"date": date_range})
+    df_complete = df_complete.merge(df_filtered[["date", column]], on="date", how="left")
+    
+    # Interpolate missing values linearly
+    df_complete[column] = df_complete[column].interpolate(method="linear")
+    
     # Create figure
     fig = go.Figure()
     
-    # Add scatter points
+    # Add scatter points for actual measured values
     fig.add_trace(
         go.Scatter(
             x=df_filtered["date"],
             y=df_filtered[column],
-            mode="lines+markers",
-            name=column,
+            mode="markers",
+            name="Measured",
+            marker=dict(size=8, color="rgba(0, 102, 204, 1)"),
             hovertemplate="<b>%{x|%Y-%m-%d}</b><br>" + column + ": %{y:.2f}<extra></extra>",
         )
     )
     
-    # Update layout
-    fig.update_layout(
-        title=title or f"{column} – Last {period.capitalize()}",
-        xaxis_title="Date",
-        yaxis_title=column,
-        template="plotly_white",
-        height=400,
-        hovermode="x unified",
+    # Add interpolated line
+    fig.add_trace(
+        go.Scatter(
+            x=df_complete["date"],
+            y=df_complete[column],
+            mode="lines",
+            name="Interpolated",
+            line=dict(color="rgba(0, 102, 204, 0.6)", width=2),
+            hovertemplate="<b>%{x|%Y-%m-%d}</b><br>" + column + ": %{y:.2f}<extra></extra>",
+        )
     )
+    
+    # Calculate y-axis range based on zoom level
+    y_values = df_filtered[column].dropna()
+    if len(y_values) > 0:
+        y_min = y_values.min()
+        y_max = y_values.max()
+        y_range = y_max - y_min if y_max > y_min else 1
+        y_center = (y_min + y_max) / 2
+        
+        # Apply zoom level to the range
+        # zoom_level = 1.0: default range with padding
+        # zoom_level = 0.5: 2x narrower (zoomed in)
+        # zoom_level = 2.0: 2x wider (zoomed out)
+        padding = y_range * 0.1
+        current_range = y_range + 2 * padding
+        adjusted_range = current_range * zoom_level
+        
+        y_range_adjusted = adjusted_range / 2
+        y_low = y_center - y_range_adjusted
+        y_high = y_center + y_range_adjusted
+    
+    # Update layout
+    layout_dict = {
+        "title": title or f"{column} – Last {period.capitalize()}",
+        "xaxis_title": "Date",
+        "yaxis_title": column,
+        "template": "plotly_white",
+        "height": 400,
+        "hovermode": "x unified",
+    }
+    
+    # Set y-axis range based on zoom level
+    if len(y_values) > 0:
+        layout_dict["yaxis_range"] = [y_low, y_high]
+    
+    fig.update_layout(**layout_dict)
     
     return fig
 

@@ -402,8 +402,163 @@ class WellnessApp:
                 )
 
     def render_stats_tab(self):
-        st.header("Stats (coming soon)")
-        st.info("This tab is ready for future plots / summaries from the same CSV.")
+        st.header("Stats")
+        
+        # Add custom CSS for better styling
+        st.markdown("""
+        <style>
+        /* Style the selectbox dropdown */
+        .stSelectbox > label {
+            font-weight: 600;
+        }
+        .stSelectbox [data-baseweb="select"] {
+            border: 2px solid #3498db !important;
+            border-radius: 6px !important;
+            background-color: white !important;
+        }
+        .stSelectbox [data-baseweb="select"] > div {
+            background-color: white !important;
+            border: 2px solid #3498db !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        df = self.handler.load_data()
+        if df.empty:
+            st.info("No data available yet.")
+            return
+        
+        # Ensure date column is properly formatted
+        df = self.handler._ensure_date_column(df)
+        
+        # Get stats configuration
+        stats_conf = self.config.get("stats", [])
+        
+        # Filter for weight tracking plot only
+        weight_stat = next((s for s in stats_conf if s["id"] == "weight_plot"), None)
+        
+        if weight_stat:
+            st.subheader(weight_stat.get("label", "Weight"))
+            
+            # Initialize zoom state in session
+            if "weight_zoom_level" not in st.session_state:
+                st.session_state.weight_zoom_level = 1.0
+            
+            # Time period selector and zoom controls
+            col_period, col_zoom = st.columns([2, 3])
+            
+            with col_period:
+                period = st.selectbox(
+                    "Time Period",
+                    options=["week", "month", "year"],
+                    format_func=lambda x: x.capitalize(),
+                    key="stats_weight_period"
+                )
+            
+            with col_zoom:
+                zoom_cols = st.columns(5)
+                with zoom_cols[1]:
+                    if st.button("−", key="stats_zoom_out"):
+                        st.session_state.weight_zoom_level *= 2.0
+                        st.rerun()
+                
+                with zoom_cols[2]:
+                    if st.button("×", key="stats_zoom_reset"):
+                        st.session_state.weight_zoom_level = 1.0
+                        st.rerun()
+                
+                with zoom_cols[3]:
+                    if st.button("+", key="stats_zoom_in"):
+                        st.session_state.weight_zoom_level *= 0.5
+                        st.rerun()
+            
+            plot_type = weight_stat.get("plot_type", "time_series")
+            column = weight_stat.get("column")
+            
+            if plot_type == "time_series":
+                fig = plot_time_series(
+                    df, 
+                    column, 
+                    period=period, 
+                    title=weight_stat.get("description"),
+                    enable_zoom=False,
+                    zoom_level=st.session_state.weight_zoom_level
+                )
+                st.plotly_chart(fig, use_container_width=True, key="weight_time_series_plot")
+            elif plot_type == "calendar":
+                fig = plot_activity_calendar(df, column, period=period, title=weight_stat.get("description"))
+                st.plotly_chart(fig, use_container_width=True, key="weight_calendar_plot")
+        else:
+            st.info("Weight tracking plot not configured.")
+        
+        df = self.handler.load_data()
+        if df.empty:
+            st.info("No data available yet.")
+            return
+        
+        # Ensure date column is properly formatted
+        df = self.handler._ensure_date_column(df)
+        
+        # Get stats configuration
+        stats_conf = self.config.get("stats", [])
+        
+        # Filter for weight tracking plot only
+        weight_stat = next((s for s in stats_conf if s["id"] == "weight_plot"), None)
+        
+        if weight_stat:
+            st.subheader(weight_stat.get("label", "Weight"))
+            
+            # Initialize zoom state in session
+            if "weight_zoom_level" not in st.session_state:
+                st.session_state.weight_zoom_level = 1.0
+            
+            # Time period selector and zoom controls
+            col_period, col_zoom = st.columns([2, 3])
+            
+            with col_period:
+                period = st.selectbox(
+                    "Time Period",
+                    options=["week", "month", "year"],
+                    format_func=lambda x: x.capitalize(),
+                    key="weight_period"
+                )
+            
+            with col_zoom:
+                st.markdown("**Zoom:**")
+                zoom_cols = st.columns(5)
+                with zoom_cols[1]:
+                    if st.button("◀ Out", key="zoom_out"):
+                        st.session_state.weight_zoom_level *= 2.0
+                        st.rerun()
+                
+                with zoom_cols[2]:
+                    if st.button("⟳ Reset", key="zoom_reset"):
+                        st.session_state.weight_zoom_level = 1.0
+                        st.rerun()
+                
+                with zoom_cols[3]:
+                    if st.button("In ▶", key="zoom_in"):
+                        st.session_state.weight_zoom_level *= 0.5
+                        st.rerun()
+            
+            plot_type = weight_stat.get("plot_type", "time_series")
+            column = weight_stat.get("column")
+            
+            if plot_type == "time_series":
+                fig = plot_time_series(
+                    df, 
+                    column, 
+                    period=period, 
+                    title=weight_stat.get("description"),
+                    enable_zoom=False,
+                    zoom_level=st.session_state.weight_zoom_level
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            elif plot_type == "calendar":
+                fig = plot_activity_calendar(df, column, period=period, title=weight_stat.get("description"))
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Weight tracking plot not configured.")
 
 
 # ================= ENTRY POINT ================= #
