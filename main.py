@@ -458,7 +458,7 @@ class WellnessApp:
             with col_zoom:
                 zoom_cols = st.columns(5)
                 with zoom_cols[1]:
-                    if st.button("−", key="stats_zoom_out"):
+                    if st.button("🔍−", key="stats_zoom_out"):
                         st.session_state.weight_zoom_level *= 2.0
                         st.rerun()
                 
@@ -468,7 +468,7 @@ class WellnessApp:
                         st.rerun()
                 
                 with zoom_cols[3]:
-                    if st.button("+", key="stats_zoom_in"):
+                    if st.button("🔍+", key="stats_zoom_in"):
                         st.session_state.weight_zoom_level *= 0.5
                         st.rerun()
             
@@ -517,7 +517,7 @@ class WellnessApp:
             with col_zoom_hrv:
                 zoom_cols_hrv = st.columns(5)
                 with zoom_cols_hrv[1]:
-                    if st.button("−", key="stats_hrv_zoom_out"):
+                    if st.button("🔍−", key="stats_hrv_zoom_out"):
                         st.session_state.hrv_zoom_level *= 2.0
                         st.rerun()
                 
@@ -527,7 +527,7 @@ class WellnessApp:
                         st.rerun()
                 
                 with zoom_cols_hrv[3]:
-                    if st.button("+", key="stats_hrv_zoom_in"):
+                    if st.button("🔍+", key="stats_hrv_zoom_in"):
                         st.session_state.hrv_zoom_level *= 0.5
                         st.rerun()
             
