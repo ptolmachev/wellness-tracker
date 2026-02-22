@@ -6,8 +6,8 @@ Provides two main plotting functions:
 2. plot_activity_calendar() - Calendar heatmap showing activity intensity
 """
 
-from datetime import datetime, timedelta
-from typing import List, Literal
+import datetime as dt
+import typing as T
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -18,7 +18,7 @@ import streamlit as st
 def plot_time_series(
     df: pd.DataFrame,
     column: str,
-    period: Literal["week", "month", "year"] = "month",
+    period: T.Literal["week", "month", "year"] = "month",
     title: str = None,
     enable_zoom: bool = False,
     zoom_level: float = 1.0,
@@ -51,15 +51,15 @@ def plot_time_series(
     df = df.dropna(subset=["date"])
     
     # Filter by period
-    today = datetime.now().date()
+    today = dt.datetime.now().date()
     if period == "week":
-        start_date = today - timedelta(days=7)
+        start_date = today - dt.timedelta(days=7)
     elif period == "month":
-        start_date = today - timedelta(days=30)
+        start_date = today - dt.timedelta(days=30)
     elif period == "year":
-        start_date = today - timedelta(days=365)
+        start_date = today - dt.timedelta(days=365)
     else:
-        start_date = today - timedelta(days=30)
+        start_date = today - dt.timedelta(days=30)
     
     df_filtered = df[df["date"].dt.date >= start_date].sort_values("date")
     
@@ -89,9 +89,9 @@ def plot_time_series(
             x=df_filtered["date"],
             y=df_filtered[column],
             mode="markers",
-            name="Measured",
             marker=dict(size=8, color="rgba(0, 102, 204, 1)"),
             hovertemplate="<b>%{x|%Y-%m-%d}</b><br>" + column + ": %{y:.2f}<extra></extra>",
+            showlegend=False,
         )
     )
     
@@ -101,9 +101,9 @@ def plot_time_series(
             x=df_complete["date"],
             y=df_complete[column],
             mode="lines",
-            name="Interpolated",
             line=dict(color="rgba(0, 102, 204, 0.6)", width=2),
-            hovertemplate="<b>%{x|%Y-%m-%d}</b><br>" + column + ": %{y:.2f}<extra></extra>",
+            hoverinfo="skip",
+            showlegend=False,
         )
     )
     
@@ -141,7 +141,7 @@ def plot_time_series(
                     x1=date + pd.Timedelta(days=1),
                     y0=0,
                     y1=1,
-                    fillcolor="rgba(200, 200, 200, 0.1)",
+                    fillcolor="rgba(200, 200, 200, 0.3)",
                     line=dict(width=0),
                 )
             )
@@ -169,7 +169,7 @@ def plot_time_series(
 def plot_activity_calendar(
     df: pd.DataFrame,
     column: str,
-    period: Literal["week", "month", "year"] = "month",
+    period: T.Literal["week", "month", "year"] = "month",
     title: str = None,
     value_threshold: float = None,
 ) -> go.Figure:
@@ -200,15 +200,15 @@ def plot_activity_calendar(
     df = df.dropna(subset=["date"])
     
     # Filter by period
-    today = datetime.now().date()
+    today = dt.datetime.now().date()
     if period == "week":
-        start_date = today - timedelta(days=7)
+        start_date = today - dt.timedelta(days=7)
     elif period == "month":
-        start_date = today - timedelta(days=30)
+        start_date = today - dt.timedelta(days=30)
     elif period == "year":
-        start_date = today - timedelta(days=365)
+        start_date = today - dt.timedelta(days=365)
     else:
-        start_date = today - timedelta(days=30)
+        start_date = today - dt.timedelta(days=30)
     
     df_filtered = df[df["date"].dt.date >= start_date].copy()
     
@@ -313,7 +313,7 @@ def plot_exercise_calendar(
     period: str = "month",
     year: int = None,
     month: int = None,
-    week_start_date: datetime = None,
+    week_start_date: T.Optional[dt.datetime] = None,
     title: str = "Exercise Calendar"
 ) -> go.Figure:
     """
@@ -359,7 +359,7 @@ def _create_month_calendar(exercise_dict: dict, year: int, month: int, title: st
     """Create a monthly calendar view."""
     import calendar as cal
     
-    today = datetime.now().date()
+    today = dt.datetime.now().date()
     if year is None:
         year = today.year
     if month is None:
@@ -386,7 +386,7 @@ def _create_month_calendar(exercise_dict: dict, year: int, month: int, title: st
             x_positions.append(day_num)
             y_positions.append(-week_num)
             
-            date_obj = datetime(year, month, day).date()
+            date_obj = dt.datetime(year, month, day).date()
             dates.append(date_obj)
             
             has_exercise = exercise_dict.get(date_obj, False)
@@ -443,13 +443,13 @@ def _create_month_calendar(exercise_dict: dict, year: int, month: int, title: st
     return fig
 
 
-def _create_week_calendar(exercise_dict: dict, week_start_date: datetime, title: str) -> go.Figure:
+def _create_week_calendar(exercise_dict: dict, week_start_date: dt.datetime, title: str) -> go.Figure:
     """Create a weekly calendar view."""
     if week_start_date is None:
-        today = datetime.now().date()
+        today = dt.datetime.now().date()
         # Find Monday of current week
-        week_start_date = today - timedelta(days=today.weekday())
-    elif isinstance(week_start_date, datetime):
+        week_start_date = today - dt.timedelta(days=today.weekday())
+    elif isinstance(week_start_date, dt.datetime):
         week_start_date = week_start_date.date()
     
     day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -461,7 +461,7 @@ def _create_week_calendar(exercise_dict: dict, week_start_date: datetime, title:
     colors = []
     
     for i in range(7):
-        date_obj = week_start_date + timedelta(days=i)
+        date_obj = week_start_date + dt.timedelta(days=i)
         x_positions.append(i)
         y_positions.append(0)
         dates.append(date_obj)
@@ -496,7 +496,7 @@ def _create_week_calendar(exercise_dict: dict, week_start_date: datetime, title:
         )
     )
     
-    week_end = week_start_date + timedelta(days=6)
+    week_end = week_start_date + dt.timedelta(days=6)
     week_number = week_start_date.isocalendar()[1]
     year = week_start_date.isocalendar()[0]
     
@@ -528,7 +528,7 @@ def _create_year_calendar(exercise_dict: dict, year: int, title: str) -> go.Figu
     import calendar as cal
     
     if year is None:
-        year = datetime.now().year
+        year = dt.datetime.now().year
     
     # Create data for heatmap
     weeks_data = []
@@ -538,8 +538,8 @@ def _create_year_calendar(exercise_dict: dict, year: int, title: str) -> go.Figu
     colors = []
     
     # Iterate through all days of the year
-    start_date = datetime(year, 1, 1).date()
-    end_date = datetime(year, 12, 31).date()
+    start_date = dt.datetime(year, 1, 1).date()
+    end_date = dt.datetime(year, 12, 31).date()
     
     current = start_date
     week_num = 0
@@ -558,7 +558,7 @@ def _create_year_calendar(exercise_dict: dict, year: int, title: str) -> go.Figu
         else:
             colors.append(0)  # No exercise
         
-        current += timedelta(days=1)
+        current += dt.timedelta(days=1)
     
     # Create scatter plot for year view
     fig = go.Figure()
