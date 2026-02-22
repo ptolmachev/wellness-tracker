@@ -282,16 +282,16 @@ class WellnessApp:
     def run(self):
         self.setup_page()
 
-        entry_day_str = self.render_day_selector()
-        entry_data = self.handler.get_for_date(entry_day_str)
-
         tabs = st.tabs(["Entry", "Stats"])
         with tabs[0]:
-            self.render_entry_tab(entry_day_str, entry_data)
+            self.render_entry_tab()
         with tabs[1]:
             self.render_stats_tab()
 
-    def render_entry_tab(self, entry_day_str: str, entry_data: dict):
+    def render_entry_tab(self):
+        entry_day_str = self.render_day_selector()
+        entry_data = self.handler.get_for_date(entry_day_str)
+        
         col1, col2 = st.columns([2, 1])
 
         with col1:
